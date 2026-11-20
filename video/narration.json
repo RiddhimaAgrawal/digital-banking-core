@@ -1,0 +1,77 @@
+[
+  {"slide": 1, "title": "Introduction", "text": [
+    "Hello. This is my Digital Banking Core Platform, the engine of a bank.",
+    "It has accounts, money transfers, a ledger that always balances, and identity checks.",
+    "It is built with Spring Boot, PostgreSQL, Flyway, Kafka and Keycloak.",
+    "In the next ten minutes I will cover the problem, the design, three hard challenges, the results, and what I would do next."
+  ]},
+  {"slide": 2, "title": "The problem", "text": [
+    "A bank core has to get four things right.",
+    "First, it must never lose or invent money. Every transfer is a debit and a credit that cancel out.",
+    "Second, it must never charge twice. If a network failure makes the app retry, the money must not move again.",
+    "Third, it must stay correct under load, even when many requests hit one account at the same moment.",
+    "And fourth, it must know who is who: login, roles, and identity checks before anyone can move money."
+  ]},
+  {"slide": 3, "title": "Double-entry bookkeeping", "text": [
+    "The foundation is double-entry bookkeeping. Money is never just added or subtracted.",
+    "Every movement is two entries that cancel out. A debit is stored as a negative number and a credit as a positive number.",
+    "Here Alice sends two thousand five hundred to Bob. Minus 2,500 for Alice, plus 2,500 for Bob, and the sum is zero.",
+    "This is enforced three ways. One service is the only code that writes entries. A database trigger rejects any unbalanced transaction at commit. And the ledger is append-only, so history can never be edited.",
+    "So the sum of every entry in the whole bank is always exactly zero."
+  ]},
+  {"slide": 4, "title": "Architecture", "text": [
+    "Here is the architecture. Clients log in at Keycloak and receive a signed token.",
+    "They call the Spring Boot application with that token. A security filter verifies it and the controllers check the role.",
+    "The services hold the business rules, and the repositories run explicit SQL against PostgreSQL, which is the source of truth.",
+    "Kafka is reached only through an outbox, which I will explain later, so Kafka being down never blocks a transfer."
+  ]},
+  {"slide": 5, "title": "Data model", "text": [
+    "The data model is managed by Flyway migrations, applied in order, exactly once each.",
+    "Customers own accounts. A transaction produces ledger entries, one per side. The idempotency keys table points back to the transaction it produced.",
+    "Money is stored as NUMERIC with two decimals, never floating point.",
+    "The account balance is a cached total. The ledger is the truth. And a database check stops an ordinary account from ever going below zero."
+  ]},
+  {"slide": 6, "title": "Life of one transfer", "text": [
+    "This is the life of one transfer, and all of it is one database transaction.",
+    "I reserve the idempotency key. I check the caller owns the source account and that their KYC is approved.",
+    "I lock both accounts in a fixed order, run the fraud rules, check funds, and write the transaction with its debit and credit.",
+    "I update both balances, write the event to the outbox table, store the result on the key, and commit.",
+    "If anything fails, everything rolls back, so there is never a half-finished transfer."
+  ]},
+  {"slide": 7, "title": "Challenge 1: concurrency", "text": [
+    "The first challenge is many requests at once.",
+    "A lost update happens when two transfers both read a balance of 1,000 and each spend 600. Without a lock both succeed. I lock both account rows before reading.",
+    "A deadlock happens when a transfer from A to B and one from B to A each hold one lock and wait for the other. I always lock in ascending account id, so one simply waits.",
+    "In my database-level check, 30 parallel transfers of 100 from a balance of 1,000 gave exactly 10 successes and 20 insufficient funds. And 40 simultaneous opposite transfers produced zero deadlocks."
+  ]},
+  {"slide": 8, "title": "Challenge 2: idempotency", "text": [
+    "The second challenge is that retries must never double-charge.",
+    "The client sends the same Idempotency-Key on every retry. I insert that key in the same transaction as the money movement, so the key exists if and only if the transfer committed.",
+    "A retry finds the key and returns the original result. The same key with a different amount is refused. A failed request leaves no key, so it can be retried.",
+    "In my check, 20 simultaneous identical requests produced one transfer and 19 replays, and the account was debited once."
+  ]},
+  {"slide": 9, "title": "Challenge 3: events", "text": [
+    "The third challenge is telling Kafka without losing events.",
+    "A database and Kafka cannot share one transaction. So I write the event to an outbox table inside the money transaction.",
+    "A background publisher sends the rows to Kafka and waits for the acknowledgement. A consumer turns them into notifications and ignores duplicates by event id.",
+    "So there is never an event for a rolled-back transfer, never a lost event for a committed one, and transfers keep working even if Kafka is down."
+  ]},
+  {"slide": 10, "title": "Identity and safety", "text": [
+    "Now identity and safety.",
+    "Keycloak handles login. My application never sees a password. It verifies the signed token on every call, and customers can only see their own accounts.",
+    "The KYC workflow goes from submit to review to approve or reject. Nobody can open an account or transfer money until approved, and nobody can review their own KYC.",
+    "Fraud rules block a very large single transfer, a daily total over the limit, and too many transfers in a minute. Every block is logged for compliance."
+  ]},
+  {"slide": 11, "title": "Results", "text": [
+    "Now the results, and I want to be precise about what they show.",
+    "My database-level concurrency script passed all nine checks on PostgreSQL 16, ending with a reconciliation where the ledger sums to zero, with no unbalanced transaction and no balance mismatch.",
+    "I also wrote 32 Java integration tests that run against a real PostgreSQL in Docker.",
+    "The throughput of 228 transfers per second came from a replay of the transfer SQL on a small sandbox. It shows the database design behaves. It is not a benchmark of the Spring application."
+  ]},
+  {"slide": 12, "title": "Next steps", "text": [
+    "Finally, the limits and next steps.",
+    "All cash operations lock one cash account, so I would shard it per branch. It supports one currency, so foreign exchange needs a conversion account. There are no reversals yet, only the schema support.",
+    "Fraud rules are static thresholds, so I would train a scoring model. The Keycloak setup is demo-grade, so production needs authorization code with PKCE and TLS. And I would upgrade to Spring Boot 4.",
+    "Thank you. I am happy to take questions."
+  ]}
+]
