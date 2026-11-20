@@ -1,0 +1,26 @@
+# Loaded by the integration tests via @ActiveProfiles("test").
+# The datasource URL is injected at runtime from the Testcontainers PostgreSQL (see AbstractIntegrationTest).
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 40
+  kafka:
+    admin:
+      auto-create: false           # do not try to create topics on a broker that is not there
+    listener:
+      auto-startup: false          # no broker in tests
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:1/realms/test   # never contacted: the JwtDecoder is created lazily
+
+bank:
+  outbox:
+    enabled: false                 # the OutboxPublisher bean is not created in tests
+  fraud:
+    # Very high so the concurrency tests are not throttled. FraudRulesTest overrides these.
+    max-transfer-amount: 1000000000.00
+    daily-limit: 1000000000.00
+    velocity-max-transfers: 100000
+    velocity-window-seconds: 60
