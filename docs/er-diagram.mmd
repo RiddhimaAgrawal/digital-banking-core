@@ -1,0 +1,79 @@
+erDiagram
+    CUSTOMERS ||--o{ ACCOUNTS : owns
+    CUSTOMERS ||--o{ KYC_SUBMISSIONS : submits
+    CUSTOMERS ||--o{ NOTIFICATIONS : receives
+    ACCOUNTS ||--o{ LEDGER_ENTRIES : "has lines"
+    TRANSACTIONS ||--|{ LEDGER_ENTRIES : "has 2 lines, sum = 0"
+    ACCOUNTS ||--o{ TRANSACTIONS : "debited (source)"
+    ACCOUNTS ||--o{ TRANSACTIONS : "credited (destination)"
+    TRANSACTIONS ||--o| IDEMPOTENCY_KEYS : "produced by key"
+    ACCOUNTS ||--o{ ACCOUNT_STATEMENTS : "monthly snapshot"
+    ACCOUNTS ||--o{ FRAUD_ALERTS : "flagged"
+
+    CUSTOMERS {
+        uuid id PK
+        string keycloak_user_id UK
+        string full_name
+        string email UK
+        string kyc_status
+    }
+    ACCOUNTS {
+        uuid id PK
+        uuid customer_id FK
+        string account_number UK
+        string type
+        numeric balance "cached, CHECK balance >= 0"
+        boolean allow_negative
+        string status
+    }
+    TRANSACTIONS {
+        uuid id PK
+        string type
+        uuid source_account_id FK
+        uuid destination_account_id FK
+        numeric amount "CHECK amount > 0"
+        string initiated_by
+    }
+    LEDGER_ENTRIES {
+        bigint id PK
+        uuid transaction_id FK
+        uuid account_id FK
+        numeric amount "negative = debit, positive = credit"
+        numeric balance_after
+    }
+    IDEMPOTENCY_KEYS {
+        string caller PK
+        string idem_key PK
+        string request_hash
+        uuid transaction_id FK
+    }
+    KYC_SUBMISSIONS {
+        uuid id PK
+        uuid customer_id FK
+        string status
+        string reviewer
+    }
+    OUTBOX_EVENTS {
+        bigint id PK
+        uuid event_id UK
+        string topic
+        jsonb payload
+        timestamptz published_at
+    }
+    NOTIFICATIONS {
+        bigint id PK
+        uuid customer_id FK
+        uuid event_id
+        string message
+    }
+    FRAUD_ALERTS {
+        bigint id PK
+        uuid account_id FK
+        string rule
+    }
+    ACCOUNT_STATEMENTS {
+        uuid id PK
+        uuid account_id FK
+        string period
+        numeric closing_balance
+    }

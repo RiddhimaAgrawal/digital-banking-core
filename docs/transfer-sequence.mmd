@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    participant Cl as Client
+    participant API as TransferController
+    participant TS as TransferService
+    participant TX as TransferTransactions<br/>(ONE DB transaction)
+    participant DB as PostgreSQL
+    participant OB as OutboxPublisher
+    participant K as Kafka
+
+    Cl->>API: POST /transfers + Idempotency-Key + JWT
+    API->>TS: transfer(...)
+    TS->>TX: transfer(...)
+    TX->>DB: BEGIN
+    TX->>DB: INSERT idempotency key ON CONFLICT DO NOTHING
+    alt key already used
+        TX->>DB: read stored result
+        TX-->>Cl: 200 original result (Idempotent-Replay: true)
+    else new key
+        TX->>DB: SELECT both accounts ORDER BY id FOR NO KEY UPDATE
+        TX->>TX: fraud rules (limit, daily, velocity)
+        TX->>DB: INSERT transaction
+        TX->>DB: INSERT ledger entries (-amount, +amount)
+        TX->>DB: UPDATE both balances
+        TX->>DB: INSERT outbox event
+        TX->>DB: UPDATE idempotency key with transaction id
+        TX->>DB: COMMIT (trigger checks ledger sums to 0)
+        TX-->>Cl: 201 Created
+    end
+    loop every 500 ms
+        OB->>DB: claim unpublished rows (SKIP LOCKED)
+        OB->>K: send TRANSFER_COMPLETED
+        OB->>DB: mark published
+    end
+    K->>K: NotificationConsumer creates DEBIT / CREDIT notifications
+    Note over TS: If a fraud rule blocked it, the transaction has<br/>rolled back, and only then is the fraud alert saved.

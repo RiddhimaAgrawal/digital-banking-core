@@ -1,0 +1,33 @@
+flowchart LR
+    subgraph Clients
+        C1["Customer app / Swagger UI"]
+        C2["Teller / Compliance / Admin"]
+    end
+
+    KC["Keycloak<br/>OAuth2 / OIDC<br/>realm: bank<br/>roles: customer, teller,<br/>compliance, admin"]
+
+    subgraph APP["Spring Boot application (digital-banking-core)"]
+        direction TB
+        SEC["Security filter<br/>validates JWT + maps roles"]
+        API["REST controllers<br/>accounts, transfers, KYC,<br/>statements, admin"]
+        SVC["Services<br/>TransferService, LedgerService,<br/>FraudService, KycService,<br/>StatementService"]
+        REPO["JDBC repositories<br/>(explicit SQL)"]
+        OUTP["OutboxPublisher<br/>(scheduled, every 500 ms)"]
+        CONS["NotificationConsumer<br/>(Kafka listener)"]
+        SEC --> API --> SVC --> REPO
+    end
+
+    PG[("PostgreSQL 16<br/>customers, accounts,<br/>transactions, ledger_entries,<br/>idempotency_keys, kyc_submissions,<br/>fraud_alerts, outbox_events,<br/>notifications, account_statements<br/><i>schema by Flyway</i>")]
+    KF[["Kafka<br/>bank.transactions.completed<br/>bank.kyc.status-changed"]]
+
+    C1 -- "1. login (password)" --> KC
+    C2 -- "1. login" --> KC
+    KC -- "2. signed JWT" --> C1
+    C1 -- "3. Bearer JWT" --> SEC
+    C2 -- "3. Bearer JWT" --> SEC
+    SEC -. "public keys (JWKS)" .-> KC
+    REPO <--> PG
+    PG -- "unpublished rows" --> OUTP
+    OUTP -- "publish" --> KF
+    KF -- "consume" --> CONS
+    CONS -- "insert notification<br/>(idempotent)" --> PG
