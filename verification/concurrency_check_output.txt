@@ -1,0 +1,13 @@
+[PASS] 30 parallel transfers of 100 from a 1000 balance: exactly 10 succeed, 20 insufficient funds  (succeeded=10, insufficient=20, sender=0.00, receiver=1000.00)
+[PASS] 20 parallel requests with the SAME idempotency key: 1 fresh, 19 replays, one transaction, debited once  (fresh=1, replays=19, distinct_tx=1, sender=300.00)
+[PASS] same idempotency key with a different amount is rejected
+[PASS] a rolled-back transfer leaves no idempotency key, so the same key can be retried  (key_rows_after_failure=0)
+[PASS] 40 simultaneous opposite transfers A<->B: no deadlock, no errors, money conserved  (errors=[])
+[PASS] 25 senders pay one receiver at once: receiver has exactly 1000  (receiver=1000.00)
+[PASS] database refuses an unbalanced ledger at COMMIT (trigger)
+[PASS] database refuses UPDATE on the ledger (append-only trigger)
+
+THROUGHPUT: 3000 transfers, 16 threads, 40 account pairs -> 228 transfers/s (latency incl. connect: p50=68.4 ms, p95=97.8 ms, p99=113.7 ms)
+[PASS] FINAL RECONCILIATION: sum of every ledger entry is 0, no unbalanced transaction, no balance mismatch  (ledger_sum=0.00, unbalanced_tx=0, balance_mismatches=0)
+
+9/9 checks passed
