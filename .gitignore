@@ -1,0 +1,12 @@
+target/
+*.class
+*.log
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.env
+*.zip
+
+*.mp4
+!video/Digital_Banking_Core_explainer.mp4
