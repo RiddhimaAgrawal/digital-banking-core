@@ -38,6 +38,16 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @ActiveProfiles("test")
 public abstract class AbstractIntegrationTest {
 
+    // Docker Engine 29+ (current Docker Desktop) refuses API versions older than 1.44, but Testcontainers 1.x
+    // (the version Spring Boot 3.5 manages) asks for an older one and fails with "client version ... is too old".
+    // This must run BEFORE the container below is created. A value you pass yourself wins, e.g. for an old
+    // Docker: mvn test -Dapi.version=1.43
+    static {
+        if (System.getProperty("api.version") == null) {
+            System.setProperty("api.version", "1.44");
+        }
+    }
+
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
 
     static {

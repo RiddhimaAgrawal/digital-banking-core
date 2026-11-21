@@ -4,6 +4,7 @@ spring:
   datasource:
     hikari:
       maximum-pool-size: 40
+      minimum-idle: 2              # three cached Spring contexts x 40 idle connections would exceed Postgres' 100
   kafka:
     admin:
       auto-create: false           # do not try to create topics on a broker that is not there
