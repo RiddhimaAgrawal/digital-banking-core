@@ -88,7 +88,7 @@ Errors are RFC 7807 JSON with a stable `code` (`INSUFFICIENT_FUNDS`, `IDEMPOTENC
 
 ## Tests and results
 
-**Java integration tests (32 tests, `mvn test`)** run against a real PostgreSQL 16 started by Testcontainers:
+**Java integration tests (32 tests, `mvn test`; needs Docker running)** run against a real PostgreSQL 16 started by Testcontainers:
 
 | Class | What it proves |
 |---|---|

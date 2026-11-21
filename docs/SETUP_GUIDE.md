@@ -248,6 +248,7 @@ Always finish a load test with the reconciliation check. "Fast **and** the books
 |---|---|
 | `release version 21 not supported` | Maven is using an older Java. Fix `JAVA_HOME` so it points to JDK 21. |
 | `Cannot connect to the Docker daemon` / Testcontainers error | Docker Desktop is not running. Start it and wait for "Engine running". |
+| Testcontainers: `client version 1.xx is too old. Minimum supported API version is 1.44` | Docker Engine 29+ dropped old API versions and Testcontainers 1.x (used by Spring Boot 3.5) asks for one. The test base class already sets `api.version=1.44` to work around it. If your Docker is *older* than 25 and says `client version 1.44 is newer`, run `mvn test -Dapi.version=1.43` instead. |
 | `mvn` cannot download libraries / timeouts | Company/campus proxy or VPN. Try another network or configure Maven's proxy in `~/.m2/settings.xml`. |
 | App fails: `Connection to localhost:5433 refused` | `docker compose ps`: Postgres not healthy yet, or Docker not running. |
 | `401 Unauthorized` on every call | Token expired or missing. Run `scripts/get-token.sh` again. The `Authorize` button wants the token **without** the word "Bearer". |
@@ -286,3 +287,9 @@ git config --global user.name  "Your Name"
 git config --global user.email "you@example.com"
 ```
 and make at least a few small commits of your own (for example your reflection, your screenshots, a README tweak) so the history shows your involvement.
+
+The existing commits are authored as the placeholder "Project Author" and carry a `Co-Authored-By` line crediting Claude. To put **your** name on them (before the first push), run this once after the two `git config` lines above:
+```bash
+git rebase --root --exec 'git commit --amend --reset-author --no-edit'
+```
+Keep the `Co-Authored-By` trailer: it is an honest record that an AI assistant helped write the code, and many courses require you to disclose that. Check your programme's rules and be ready to explain every part of the code (that is what `docs/CODE_WALKTHROUGH.md` is for).
