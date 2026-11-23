@@ -13,7 +13,7 @@ services:
       POSTGRES_USER: bank
       POSTGRES_PASSWORD: bank
     ports:
-      - "5433:5432"          # host 5433 -> container 5432 (avoids clashing with a local PostgreSQL)
+      - "55432:5432"          # host 5433 -> container 5432 (avoids clashing with a local PostgreSQL)
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

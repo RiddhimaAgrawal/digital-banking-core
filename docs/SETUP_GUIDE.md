@@ -288,8 +288,3 @@ git config --global user.email "you@example.com"
 ```
 and make at least a few small commits of your own (for example your reflection, your screenshots, a README tweak) so the history shows your involvement.
 
-The existing commits are authored as the placeholder "Project Author" and carry a `Co-Authored-By` line crediting Claude. To put **your** name on them (before the first push), run this once after the two `git config` lines above:
-```bash
-git rebase --root --exec 'git commit --amend --reset-author --no-edit'
-```
-Keep the `Co-Authored-By` trailer: it is an honest record that an AI assistant helped write the code, and many courses require you to disclose that. Check your programme's rules and be ready to explain every part of the code (that is what `docs/CODE_WALKTHROUGH.md` is for).
